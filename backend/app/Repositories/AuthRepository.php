@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class AuthRepository
@@ -12,6 +13,11 @@ class AuthRepository
             'email' => $email,
             'password' => $password,
         ], $remember);
+    }
+
+    public function createUser(array $attributes): User
+    {
+        return User::create($attributes);
     }
 
     public function logout(string $guard): void

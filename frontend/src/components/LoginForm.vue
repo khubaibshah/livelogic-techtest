@@ -34,6 +34,27 @@ const ensureCsrfCookie = async () => {
   })
 }
 
+const extractErrorMessage = (problem: unknown): string => {
+  if (problem && typeof problem === 'object') {
+    const candidate = problem as { message?: unknown; errors?: Record<string, unknown> }
+
+    if (candidate.errors && typeof candidate.errors === 'object') {
+      const messages = Object.values(candidate.errors).flat()
+      const firstMessage = messages.find((entry): entry is string => typeof entry === 'string')
+
+      if (firstMessage) {
+        return firstMessage
+      }
+    }
+
+    if (typeof candidate.message === 'string') {
+      return candidate.message
+    }
+  }
+
+  return 'Something went wrong.'
+}
+
 const login = async () => {
   loading.value = true
   emit('error', '')
@@ -56,7 +77,7 @@ const login = async () => {
         'X-XSRF-TOKEN': token,
       },
       body: JSON.stringify({
-        email: email.value,
+        email: email.value.trim(),
         password: password.value,
         remember: remember.value,
       }),
@@ -64,15 +85,19 @@ const login = async () => {
 
     if (!response.ok) {
       const problem = await response.json().catch(() => null)
-      throw new Error(problem?.message ?? 'Login failed.')
+      throw new Error(problem ? extractErrorMessage(problem) : 'Login failed.')
     }
 
     const data = (await response.json()) as { user: ApiUser }
     emit('success', data.user)
     password.value = ''
   } catch (submitError) {
-    const message = submitError instanceof Error ? submitError.message : 'Something went wrong.'
-    emit('error', message)
+    if (submitError instanceof Error) {
+      emit('error', submitError.message)
+      return
+    }
+
+    emit('error', 'Something went wrong.')
   } finally {
     loading.value = false
   }

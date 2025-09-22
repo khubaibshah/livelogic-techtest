@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Repositories\AuthRepository;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
 
@@ -29,6 +30,31 @@ class AuthService
         $request->session()->regenerate();
 
         return $request->user();
+    }
+
+    public function register(Request $request, array $data): Authenticatable
+    {
+        $remember = (bool) ($data['remember'] ?? false);
+
+        $user = $this->authRepository->createUser([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+        ]);
+
+        $authenticated = $this->authRepository->attemptLogin(
+            $data['email'],
+            $data['password'],
+            $remember
+        );
+
+        if (! $authenticated) {
+            throw new AuthenticationException('Registration succeeded but automatic login failed.');
+        }
+
+        $request->session()->regenerate();
+
+        return $request->user() ?? $user;
     }
 
     public function logout(Request $request): void

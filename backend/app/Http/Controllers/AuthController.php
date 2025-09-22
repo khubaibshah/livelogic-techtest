@@ -12,6 +12,24 @@ class AuthController extends Controller
     {
     }
 
+    public function register(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'confirmed', 'min:8'],
+            'password_confirmation' => ['required', 'string', 'min:8'],
+            'remember' => ['sometimes', 'boolean'],
+        ]);
+
+        $user = $this->authService->register($request, $data);
+
+        return response()->json([
+            'message' => 'Registered.',
+            'user' => $user,
+        ], 201);
+    }
+
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
