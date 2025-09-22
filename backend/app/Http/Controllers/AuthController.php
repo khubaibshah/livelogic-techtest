@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
+    public function __construct(private readonly AuthService $authService)
+    {
+    }
+
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
@@ -16,35 +20,23 @@ class AuthController extends Controller
             'remember' => ['sometimes', 'boolean'],
         ]);
 
-        $remember = $credentials['remember'] ?? false;
+        $user = $this->authService->login($request, $credentials);
 
-        if (! Auth::attempt([
-            'email' => $credentials['email'],
-            'password' => $credentials['password'],
-        ], $remember)) {
+        if (! $user) {
             return response()->json([
                 'message' => 'Invalid credentials.',
             ], 422);
         }
 
-        $request->session()->regenerate();
-
         return response()->json([
             'message' => 'Logged in.',
-            'user' => $request->user(),
+            'user' => $user,
         ]);
     }
 
     public function logout(Request $request): JsonResponse
     {
-        if ($request->user()) {
-            $guard = config('sanctum.guard', 'web');
-            $guard = is_array($guard) ? ($guard[0] ?? 'web') : $guard;
-
-            Auth::guard($guard)->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-        }
+        $this->authService->logout($request);
 
         return response()->json([
             'message' => 'Logged out.',

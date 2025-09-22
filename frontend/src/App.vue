@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import LoginForm from './components/LoginForm.vue'
 import LogoutButton from './components/LogoutButton.vue'
+import RegisterForm from './components/RegisterForm.vue'
 
 type ApiUser = {
   name: string
@@ -12,6 +13,7 @@ type ApiUser = {
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 const error = ref('')
+const showRegister = ref(false)
 const user = ref<ApiUser | null>(null)
 
 const isLoggedIn = computed(() => user.value !== null)
@@ -38,15 +40,33 @@ const fetchUser = async () => {
 const handleLoginSuccess = (signedInUser: ApiUser) => {
   user.value = signedInUser
   error.value = ''
+  showRegister.value = false
 }
 
 const handleLogoutSuccess = () => {
   user.value = null
   error.value = ''
+  showRegister.value = false
+}
+
+const handleRegisterSuccess = (registeredUser: ApiUser) => {
+  user.value = registeredUser
+  error.value = ''
+  showRegister.value = false
 }
 
 const handleError = (message: string) => {
   error.value = message
+}
+
+const showLoginForm = () => {
+  showRegister.value = false
+  error.value = ''
+}
+
+const showRegisterForm = () => {
+  showRegister.value = true
+  error.value = ''
 }
 
 onMounted(fetchUser)
@@ -60,8 +80,14 @@ onMounted(fetchUser)
       <p v-if="isLoggedIn" class="status">You are logged in.</p>
 
       <LoginForm
-        v-if="!isLoggedIn"
+        v-if="!isLoggedIn && !showRegister"
         @success="handleLoginSuccess"
+        @error="handleError"
+      />
+
+      <RegisterForm
+        v-else-if="!isLoggedIn"
+        @success="handleRegisterSuccess"
         @error="handleError"
       />
 
@@ -70,6 +96,25 @@ onMounted(fetchUser)
         @success="handleLogoutSuccess"
         @error="handleError"
       />
+
+      <div v-if="!isLoggedIn" class="toggle">
+        <button
+          v-if="showRegister"
+          class="link"
+          type="button"
+          @click="showLoginForm"
+        >
+          Already have an account? Login
+        </button>
+        <button
+          v-else
+          class="link"
+          type="button"
+          @click="showRegisterForm"
+        >
+          Need an account? Register
+        </button>
+      </div>
 
       <p v-if="error" class="error">{{ error }}</p>
     </section>
@@ -106,6 +151,21 @@ onMounted(fetchUser)
   margin: 0;
   text-align: center;
   color: #0a7c4f;
+}
+
+.toggle {
+  display: flex;
+  justify-content: center;
+}
+
+.link {
+  background: none;
+  border: none;
+  color: #4f46e5;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
 }
 
 .error {
