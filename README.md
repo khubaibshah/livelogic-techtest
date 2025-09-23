@@ -167,3 +167,15 @@ php artisan test
 
 The suite boots the application with an in-memory SQLite database (configured in phpunit.xml), so no extra setup is required beyond composer install.
 
+
+
+## 9. Screenshots
+
+### Login
+ ![Login](frontend/src/assets/login.png)
+
+### Landing page
+ ![Login](frontend/src/assets/landing.png)
+
+### TODO APP
+ ![Login](frontend/src/assets/app.png)
