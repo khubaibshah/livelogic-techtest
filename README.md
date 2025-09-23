@@ -155,3 +155,18 @@ For production deploys, point the web server to `backend/public`. Copy the `fron
 
 ## 8. PHP unit tests
 
+The backend ships with PHPUnit feature coverage for every Sanctum-protected to-do endpoint (list CRUD + task CRUD) and the /api/user profile route. Tests seed users/lists/tasks via model factories and exercise both success and validation paths.
+
+Run everything with:
+
+
+# from backend/
+`
+cd backend
+`
+`
+php artisan test
+`
+
+The suite boots the application with an in-memory SQLite database (configured in phpunit.xml), so no extra setup is required beyond composer install.
+
