@@ -28,7 +28,7 @@ Make sure the following are installed **before** cloning:
 ## 2. Clone the repository
 
 ```bash
-git clone https://github.com/khubaibshah/livelogic-techtest
+git clone 'https://github.com/khubaibshah/livelogic-techtest'
 cd livelogic-techtest
 ```
 ---
