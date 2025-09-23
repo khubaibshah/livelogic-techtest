@@ -87,7 +87,7 @@ cd frontend
 # install node dependencies (PrimeVue, PrimeIcons, etc.)
 npm install
 
-# copy env template
+# copy env template unless there is one already you can skip this step
 cp .env.example .env
 ```
 
