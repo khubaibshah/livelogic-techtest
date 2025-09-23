@@ -93,18 +93,20 @@ const handlePriorityChange = (payload: { taskId: number; priority: Priority }) =
 
 <style scoped>
 .todo {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
 }
 
-.todo__panel :deep(.p-card-content) {
-  padding-top: 0.5rem;
+.todo__panel {
+  width: 100%;
 }
 
-@media (min-width: 960px) {
-  .todo {
-    grid-template-columns: 320px 1fr;
-    align-items: start;
-  }
+.todo__panel :deep(.p-card-body) {
+  padding: 1.4rem;
+}
+
+.todo__panel :deep(.p-card-content) {
+  padding: 0;
 }
 </style>
