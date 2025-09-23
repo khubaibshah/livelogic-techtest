@@ -2,9 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 
 import LoginForm from '../components/LoginForm.vue'
-import SignOut from '../components/SignOut.vue'
-import PostLoginMenu from '../components/PostLoginMenu.vue'
 import RegisterForm from '../components/RegisterForm.vue'
+import SignOutButton from '../components/SignOutButton.vue'
+import PostLoginMenu from '../components/PostLoginMenu.vue'
 import TodoApp from '../components/TodoApp.vue'
 
 type ApiUser = {
@@ -15,14 +15,26 @@ type ApiUser = {
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 const error = ref('')
+const loadingUser = ref(true)
 const showRegister = ref(false)
 const selectedApp = ref<'todo' | 'poll' | null>(null)
 const user = ref<ApiUser | null>(null)
 
 const isLoggedIn = computed(() => user.value !== null)
 const activeUserLabel = computed(() => user.value?.name ?? user.value?.email ?? '')
+const avatarLabel = computed(() => (activeUserLabel.value ? activeUserLabel.value.charAt(0).toUpperCase() : '?'))
+
+const authTabIndex = computed({
+  get: () => (showRegister.value ? 1 : 0),
+  set: (index: number) => {
+    showRegister.value = index === 1
+    error.value = ''
+  },
+})
 
 const fetchUser = async () => {
+  loadingUser.value = true
+
   try {
     const response = await fetch(`${API_BASE_URL}/api/user`, {
       method: 'GET',
@@ -39,42 +51,37 @@ const fetchUser = async () => {
     }
   } catch (fetchError) {
     console.error(fetchError)
+  } finally {
+    loadingUser.value = false
   }
 }
 
 const handleLoginSuccess = (signedInUser: ApiUser) => {
   user.value = signedInUser
-  error.value = ''
   showRegister.value = false
   selectedApp.value = null
+  authTabIndex.value = 0
+  error.value = ''
 }
 
 const handleLogoutSuccess = () => {
   user.value = null
-  error.value = ''
   showRegister.value = false
   selectedApp.value = null
+  authTabIndex.value = 0
+  error.value = ''
 }
 
 const handleRegisterSuccess = (registeredUser: ApiUser) => {
   user.value = registeredUser
-  error.value = ''
   showRegister.value = false
   selectedApp.value = null
+  authTabIndex.value = 0
+  error.value = ''
 }
 
 const handleError = (message: string) => {
   error.value = message
-}
-
-const showLoginForm = () => {
-  showRegister.value = false
-  error.value = ''
-}
-
-const showRegisterForm = () => {
-  showRegister.value = true
-  error.value = ''
 }
 
 const handleAppSelection = (app: 'todo' | 'poll') => {
@@ -91,186 +98,232 @@ onMounted(fetchUser)
 </script>
 
 <template>
-  <main class="container">
-    <section class="card" :class="{ 'card--wide': isLoggedIn && selectedApp }">
-      <h1 class="title">Sanctum Login</h1>
-
-      <template v-if="!isLoggedIn">
-        <LoginForm v-if="!showRegister" @success="handleLoginSuccess" @error="handleError" />
-
-        <RegisterForm v-else @success="handleRegisterSuccess" @error="handleError" />
-
-        <div class="toggle">
-          <button
-            v-if="showRegister"
-            class="link"
-            type="button"
-            @click="showLoginForm"
-          >
-            Already have an account? Login
-          </button>
-          <button
-            v-else
-            class="link"
-            type="button"
-            @click="showRegisterForm"
-          >
-            Need an account? Register
-          </button>
+  <main class="home">
+    <div class="home__grid">
+      <section class="home__hero">
+        <div class="home__badges">
+          <Tag icon="pi pi-lock" value="Laravel Sanctum" severity="contrast" />
+          <Tag icon="pi pi-sparkles" value="By Muhammad Khubaib" severity="info" />
         </div>
-      </template>
+        <h1 class="home__title">LiveLogic</h1>
+        <p class="home__subtitle">
+          Manage authentication, explore mini apps, and keep your tasks organised with a refined PrimeVue UI layer.
+        </p>
+      </section>
 
-      <template v-else>
-        <div class="post-login">
-          <header class="post-login__header">
-            <div class="post-login__identity">
-              <p class="post-login__welcome">Welcome back</p>
-              <p class="post-login__user">{{ activeUserLabel }}</p>
-            </div>
-            <SignOut @success="handleLogoutSuccess" @error="handleError" />
-          </header>
-
-          <div v-if="!selectedApp" class="post-login__menu">
-            <PostLoginMenu @select="handleAppSelection" />
+      <Card class="home__card">
+        <template #content>
+          <div v-if="loadingUser" class="home__loading">
+            <i class="pi pi-spin pi-spinner home__spinner" aria-hidden="true" />
+            <p class="home__status">Checking for an active session...</p>
           </div>
 
-          <div v-else class="post-login__app">
-            <button class="link link--back" type="button" @click="resetAppSelection">
-              ��� Back to menu
-            </button>
-
-            <TodoApp v-if="selectedApp === 'todo'" @error="handleError" />
-
-            <div v-else class="placeholder">
-              <p>Poll app is coming soon.</p>
+          <template v-else>
+            <div v-if="!isLoggedIn" class="home__auth">
+              <TabView v-model:activeIndex="authTabIndex" class="home__tabs">
+                <TabPanel header="Login">
+                  <LoginForm @success="handleLoginSuccess" @error="handleError" />
+                </TabPanel>
+                <TabPanel header="Register">
+                  <RegisterForm @success="handleRegisterSuccess" @error="handleError" />
+                </TabPanel>
+              </TabView>
             </div>
-          </div>
-        </div>
-      </template>
 
-      <p v-if="error" class="error">{{ error }}</p>
-    </section>
+            <div v-else class="home__dashboard">
+              <div class="home__header">
+                <div class="home__identity">
+                  <span class="home__avatar" aria-hidden="true">{{ avatarLabel }}</span>
+                  <div>
+                    <p class="home__welcome">Welcome back</p>
+                    <h2 class="home__user">{{ activeUserLabel }}</h2>
+                  </div>
+                </div>
+                <SignOutButton @success="handleLogoutSuccess" @error="handleError" />
+              </div>
+
+              <Divider class="home__divider" />
+
+              <div v-if="!selectedApp" class="home__menu">
+                <PostLoginMenu @select="handleAppSelection" />
+              </div>
+
+              <div v-else class="home__app">
+                <Button
+                  link
+                  icon="pi pi-arrow-left"
+                  label="Back to apps"
+                  class="home__back"
+                  @click="resetAppSelection"
+                />
+
+                <Card class="home__app-card">
+                  <template #title>
+                    {{ selectedApp === 'todo' ? 'To-Do Workspace' : 'Polls Workspace' }}
+                  </template>
+                  <template #content>
+                    <TodoApp v-if="selectedApp === 'todo'" @error="handleError" />
+                    <Message v-else severity="info" :closable="false" text="Poll app is coming soon." />
+                  </template>
+                </Card>
+              </div>
+            </div>
+          </template>
+
+          <Message v-if="error" severity="error" :closable="false" class="home__error">
+            {{ error }}
+          </Message>
+        </template>
+      </Card>
+    </div>
   </main>
 </template>
 
 <style scoped>
-.container {
-  min-height: 100vh;
+.home {
+  width: 100%;
   display: flex;
-  align-items: center;
   justify-content: center;
-  background: #f5f5f5;
-  padding: 2rem;
 }
 
-.card {
-  width: min(420px, 100%);
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  padding: 2rem;
+.home__grid {
+  width: 100%;
+  max-width: 1180px;
+  display: grid;
+  gap: 2.5rem;
+  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.home__hero {
+  display: grid;
+  gap: 1.2rem;
+  align-content: start;
+  padding-top: 0.5rem;
+}
+
+.home__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.home__title {
+  margin: 0;
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-weight: 700;
+}
+
+.home__subtitle {
+  margin: 0;
+  color: #6b7280;
+  font-size: 1.05rem;
+  max-width: 32rem;
+}
+
+.home__card {
+  width: 100%;
+}
+
+.home__loading {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+  padding: 1.5rem 0;
+}
+
+.home__spinner {
+  font-size: 2.2rem;
+  color: #4f46e5;
+}
+
+.home__status {
+  margin: 0;
+  color: #6b7280;
+}
+
+.home__auth {
+  padding-top: 0.5rem;
+}
+
+.home__tabs :deep(.p-tabview-panel) {
+  padding: 1.2rem 0 0;
+}
+
+.home__dashboard {
   display: grid;
   gap: 1.5rem;
 }
 
-.card--wide {
-  width: min(960px, 100%);
-}
-
-.title {
-  margin: 0;
-  text-align: center;
-  font-size: 1.5rem;
-}
-
-.toggle {
-  display: flex;
-  justify-content: center;
-}
-
-.link {
-  background: none;
-  border: none;
-  color: #4f46e5;
-  font: inherit;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-}
-
-.link--back {
-  justify-self: flex-start;
-  margin-bottom: 1rem;
-}
-
-.error {
-  margin: 0;
-  text-align: center;
-  color: #b91c1c;
-}
-
-.post-login {
-  display: grid;
-  gap: 2rem;
-}
-
-.post-login__header {
+.home__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
-.post-login__identity {
+.home__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.home__avatar {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: #4f46e5;
+  color: #fff;
   display: grid;
-  gap: 0.2rem;
+  place-items: center;
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
-.post-login__welcome {
+.home__welcome {
   margin: 0;
   font-size: 0.85rem;
   color: #6b7280;
 }
 
-.post-login__user {
+.home__user {
   margin: 0;
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 1.3rem;
 }
 
-.post-login__menu {
-  display: flex;
-  justify-content: center;
+.home__divider {
+  margin: 0;
 }
 
-.post-login__app {
+.home__menu {
+  padding-block: 0.2rem;
+}
+
+.home__app {
   display: grid;
-  gap: 1.5rem;
+  gap: 1.2rem;
 }
 
-.placeholder {
-  display: grid;
-  place-items: center;
-  min-height: 200px;
-  border: 1px dashed #cbd5f5;
-  border-radius: 12px;
-  color: #6b7280;
+.home__app-card :deep(.p-card-content) {
+  padding-top: 0.5rem;
 }
 
-@media (max-width: 860px) {
-  .card--wide {
-    width: 100%;
+.home__error {
+  margin-top: 1.2rem;
+}
+
+@media (max-width: 640px) {
+  .home__grid {
+    gap: 2rem;
   }
 
-  .post-login__header {
-    flex-direction: column;
-    align-items: flex-start;
+  .home__hero {
+    order: 2;
   }
 
-  .link--back {
-    margin-bottom: 0.5rem;
+  .home__card {
+    order: 1;
   }
 }
 </style>
-
-

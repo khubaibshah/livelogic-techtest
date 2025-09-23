@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import LoginForm from '../components/LoginForm.vue'
 import RegisterForm from '../components/RegisterForm.vue'
-import SignOut from '../components/SignOut.vue'
+import SignOutButton from '../components/SignOutButton.vue'
 import PostLoginMenu from '../components/PostLoginMenu.vue'
 import TodoApp from '../components/TodoApp.vue'
 
@@ -28,7 +28,7 @@ const router = createRouter({
     {
       path: '/logout',
       name: 'logout',
-      component: SignOut,
+      component: SignOutButton,
     },
     {
       path: '/menu',
@@ -44,4 +44,5 @@ const router = createRouter({
 })
 
 export default router
+
 

@@ -1,39 +1,40 @@
-# frontend
+# Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+PrimeVue-driven front-end for the LiveLogic tech test. The interface wraps the existing Sanctum authentication flows with a polished component library and presents the to-do mini app in a glassmorphism-inspired shell.
 
-## Recommended IDE Setup
+## Stack
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- Vue 3 + Vite + TypeScript
+- PrimeVue 4 with the Aura theme and PrimeIcons
+- Pinia for state management
+- Laravel Sanctum (backend) for auth/session APIs
 
-## Type Support for `.vue` Imports in TS
+## Getting started
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+```bash
+cd frontend
 npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+The dev server runs on [http://localhost:5173](http://localhost:5173) by default. Ensure the Laravel backend is running locally on port 8000 (or update `VITE_API_URL` in `frontend/.env`).
 
-```sh
+### Building for production
+
+```bash
 npm run build
+npm run preview
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+## Features
 
-```sh
-npm run lint
-```
+- **Authentication tabs**: Login and registration forms sit inside a PrimeVue `TabView`, with inline validation and accessible error feedback.
+- **PrimeVue components everywhere**: Buttons, cards, listboxes, dropdowns, and messages provide consistent styling with almost zero custom CSS.
+- **Responsive dashboard**: After signing in, users see a welcome panel, quick workspace selector, and an upgraded to-do experience.
+- **Task workspace upgrades**: To-do lists now offer list creation shortcuts, priority tags, and contextual actions inside PrimeVue cards.
+
+## Troubleshooting
+
+- Install the new UI dependencies if you pulled this branch: `npm install primevue primeicons @primevue/themes`.
+- If `npm run dev` complains about missing types, restart your IDE so it picks up `src/types/primevue-components.d.ts`.
+- The frontend expects Sanctum cookies; run the Laravel backend with `php artisan serve` and ensure CORS is aligned.

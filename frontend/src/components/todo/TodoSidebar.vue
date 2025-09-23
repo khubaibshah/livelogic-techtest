@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRefs } from 'vue'
+import { computed, toRefs } from 'vue'
 import type { TodoList } from '../../composables/useTodoLists'
 
 const props = defineProps<{
@@ -19,149 +19,152 @@ const emit = defineEmits<{
   (e: 'select', value: number): void
 }>()
 
-const updateName = (event: Event) => {
-  emit('update:newListName', (event.target as HTMLInputElement).value)
+const listOptions = computed(() =>
+  lists.value.map((list) => ({
+    label: list.name,
+    value: list.id,
+    count: list.tasks.length,
+    countLabel: `${list.tasks.length} ${list.tasks.length === 1 ? 'task' : 'tasks'}`,
+  }))
+)
+
+const selectedOption = computed<number | null>({
+  get: () => selectedListId.value ?? null,
+  set: (value) => {
+    if (typeof value === 'number') {
+      emit('select', value)
+    }
+  },
+})
+
+const updateName = (value: string) => {
+  emit('update:newListName', value)
 }
 
 const submit = () => {
   emit('create')
 }
-
-const selectList = (listId: number) => {
-  emit('select', listId)
-}
 </script>
 
 <template>
   <aside class="todo-sidebar">
-    <h2 class="todo-sidebar__title">Lists</h2>
+    <div class="todo-sidebar__header">
+      <h3 class="todo-sidebar__title">Your lists</h3>
+      <Tag v-if="listOptions.length" icon="pi pi-folder" :value="`${listOptions.length} lists`" severity="info" />
+    </div>
 
     <form class="todo-sidebar__form" @submit.prevent="submit">
-      <label class="field">
-        <span>New list</span>
-        <input :value="newListName" :disabled="creatingList" type="text" placeholder="e.g. Work" @input="updateName" />
-      </label>
-      <button class="primary" type="submit" :disabled="creatingList || !canCreateList">
-        {{ creatingList ? 'Creating...' : 'Create list' }}
-      </button>
+      <label class="todo-sidebar__label" for="todo-create-input">New list</label>
+      <InputText
+        id="todo-create-input"
+        :value="newListName"
+        :disabled="creatingList"
+        placeholder="e.g. Product launch"
+        style="width: 100%"
+        @input="updateName(($event.target as HTMLInputElement).value)"
+      />
+      <div class="todo-sidebar__actions">
+        <Button
+          type="submit"
+          label="Create list"
+          icon="pi pi-plus"
+          :loading="creatingList"
+          :disabled="!canCreateList"
+          style="width: 100%"
+        />
+      </div>
     </form>
 
-    <p v-if="loadingLists" class="todo-sidebar__status">Loading lists...</p>
-    <p v-else-if="lists.length === 0" class="todo-sidebar__status">No lists yet. Create one above.</p>
+    <div v-if="loadingLists" class="todo-sidebar__status">
+      <i class="pi pi-spin pi-spinner" aria-hidden="true" />
+      <span>Loading lists...</span>
+    </div>
 
-    <ul class="todo-sidebar__lists" v-else>
-      <li
-        v-for="list in lists"
-        :key="list.id"
-        :class="['todo-sidebar__item', { 'todo-sidebar__item--active': list.id === selectedListId }]"
-      >
-        <button type="button" class="todo-sidebar__button" @click="selectList(list.id)">
-          <span class="todo-sidebar__name">{{ list.name }}</span>
-          <span class="todo-sidebar__count">{{ list.tasks.length }} tasks</span>
-        </button>
-      </li>
-    </ul>
+    <Message
+      v-else-if="listOptions.length === 0"
+      severity="info"
+      :closable="false"
+      text="No lists yet. Create your first one above."
+    />
+
+    <Listbox
+      v-else
+      v-model="selectedOption"
+      :options="listOptions"
+      optionLabel="label"
+      optionValue="value"
+      class="todo-sidebar__listbox"
+    >
+      <template #option="{ option, selected }">
+        <div class="todo-sidebar__option" :class="{ 'todo-sidebar__option--selected': selected }">
+          <span class="todo-sidebar__name">{{ option.label }}</span>
+          <Tag :value="option.countLabel" severity="secondary" />
+        </div>
+      </template>
+    </Listbox>
   </aside>
 </template>
 
 <style scoped>
 .todo-sidebar {
-  background: #f9fafb;
-  border-radius: 12px;
-  padding: 1.5rem;
   display: grid;
-  gap: 1.5rem;
+  gap: 1.3rem;
+}
+
+.todo-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
 }
 
 .todo-sidebar__title {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .todo-sidebar__form {
   display: grid;
-  gap: 0.9rem;
-}
-
-.todo-sidebar__status {
-  margin: 0;
-  font-size: 0.95rem;
-  color: #6b7280;
-}
-
-.todo-sidebar__lists {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
   gap: 0.6rem;
 }
 
-.todo-sidebar__item {
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+.todo-sidebar__label {
+  font-weight: 600;
+  font-size: 0.85rem;
 }
 
-.todo-sidebar__item--active {
-  outline: 2px solid #4f46e5;
+.todo-sidebar__actions {
+  display: flex;
 }
 
-.todo-sidebar__button {
+.todo-sidebar__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.todo-sidebar__listbox {
   width: 100%;
-  padding: 0.8rem 1rem;
-  border: none;
-  background: transparent;
+}
+
+.todo-sidebar__option {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  text-align: left;
-  cursor: pointer;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.todo-sidebar__option--selected {
+  font-weight: 600;
 }
 
 .todo-sidebar__name {
-  font-weight: 600;
-}
-
-.todo-sidebar__count {
-  font-size: 0.85rem;
-  color: #6b7280;
-}
-
-.field {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.field span {
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.field input {
-  border-radius: 8px;
-  border: 1px solid #cbd5f5;
-  padding: 0.6rem 0.8rem;
-  font-size: 0.95rem;
-}
-
-.field input:focus {
-  outline: 2px solid #4f46e5;
-  outline-offset: 1px;
-}
-
-.primary {
-  height: 2.6rem;
-  border-radius: 8px;
-  border: none;
-  background: #4f46e5;
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

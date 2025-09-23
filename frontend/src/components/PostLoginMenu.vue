@@ -9,51 +9,55 @@ const choose = (app: 'todo' | 'poll') => {
 </script>
 
 <template>
-  <div class="menu">
-    <h2 class="menu__title">Choose a mini app</h2>
-    <div class="menu__options">
-      <button type="button" class="menu__option" @click="choose('todo')">
-        To-Do List
-      </button>
-      <button type="button" class="menu__option" @click="choose('poll')">
-        Poll
-      </button>
+  <section class="menu">
+    <div class="menu__header">
+      <h3 class="menu__title">Choose a workspace</h3>
+      <p class="menu__subtitle">Pick a mini app to continue.</p>
     </div>
-  </div>
+    <div class="menu__actions">
+      <Button
+        type="button"
+        label="To-Do List"
+        icon="pi pi-list-check"
+        size="large"
+        class="menu__button"
+        @click="choose('todo')"
+      />
+      <Button
+        type="button"
+        label="Polls"
+        icon="pi pi-chart-bar"
+        size="large"
+        severity="info"
+        class="menu__button"
+        @click="choose('poll')"
+      />
+    </div>
+  </section>
 </template>
 
 <style scoped>
 .menu {
   display: grid;
   gap: 1.5rem;
-  text-align: center;
 }
 
 .menu__title {
   margin: 0;
+  font-size: 1.25rem;
 }
 
-.menu__options {
+.menu__subtitle {
+  margin: 0.2rem 0 0;
+  color: #6b7280;
+}
+
+.menu__actions {
   display: grid;
   gap: 1rem;
 }
 
-.menu__option {
-  padding: 0.9rem 1.5rem;
-  border-radius: 8px;
-  border: none;
-  background: #4f46e5;
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.menu__option:focus {
-  outline: 2px solid #312e81;
-  outline-offset: 2px;
-}
-
-.menu__option:hover {
-  background: #4338ca;
+.menu__button {
+  width: 100%;
 }
 </style>

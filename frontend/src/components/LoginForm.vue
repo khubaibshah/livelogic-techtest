@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+
+import { useLoginRequest } from '../composables/useAuthRequests'
 
 type ApiUser = {
   name: string
@@ -14,169 +16,131 @@ const emit = defineEmits<{
 const email = ref('')
 const password = ref('')
 const remember = ref(true)
-const loading = ref(false)
+const submitAttempted = ref(false)
+const touchedEmail = ref(false)
+const touchedPassword = ref(false)
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-const findCookieValue = (key: string): string | null => {
-  const match = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith(key + '='))
+const emailValidation = computed(() => {
+  const value = email.value.trim()
 
-  return match ? decodeURIComponent(match.split('=')[1]) : null
-}
-
-const getXsrfToken = (): string | null => findCookieValue('XSRF-TOKEN')
-
-const ensureCsrfCookie = async () => {
-  await fetch(API_BASE_URL + '/sanctum/csrf-cookie', {
-    credentials: 'include',
-  })
-}
-
-const extractErrorMessage = (problem: unknown): string => {
-  if (problem && typeof problem === 'object') {
-    const candidate = problem as { message?: unknown; errors?: Record<string, unknown> }
-
-    if (candidate.errors && typeof candidate.errors === 'object') {
-      const messages = Object.values(candidate.errors).flat()
-      const firstMessage = messages.find((entry): entry is string => typeof entry === 'string')
-
-      if (firstMessage) {
-        return firstMessage
-      }
-    }
-
-    if (typeof candidate.message === 'string') {
-      return candidate.message
-    }
+  if (!value) {
+    return 'Email is required.'
   }
 
-  return 'Something went wrong.'
-}
+  if (!emailPattern.test(value)) {
+    return 'Enter a valid email address.'
+  }
+
+  return ''
+})
+
+const passwordValidation = computed(() => {
+  if (!password.value) {
+    return 'Password is required.'
+  }
+
+  if (password.value.length < 8) {
+    return 'Password must be at least 8 characters.'
+  }
+
+  return ''
+})
+
+const showEmailError = computed(() => submitAttempted.value || touchedEmail.value)
+const showPasswordError = computed(() => submitAttempted.value || touchedPassword.value)
+
+const emailError = computed(() => (showEmailError.value ? emailValidation.value : ''))
+const passwordError = computed(() => (showPasswordError.value ? passwordValidation.value : ''))
+
+const formValid = computed(() => !emailValidation.value && !passwordValidation.value)
+
+const { loading, submit } = useLoginRequest({
+  onSuccess: (user) => {
+    emit('success', user)
+    password.value = ''
+    submitAttempted.value = false
+    touchedEmail.value = false
+    touchedPassword.value = false
+  },
+  onError: (message) => emit('error', message),
+})
 
 const login = async () => {
-  loading.value = true
-  emit('error', '')
+  submitAttempted.value = true
 
-  try {
-    await ensureCsrfCookie()
-
-    const token = getXsrfToken()
-
-    if (!token) {
-      throw new Error('Unable to establish CSRF token.')
-    }
-
-    const response = await fetch(API_BASE_URL + '/login', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'X-XSRF-TOKEN': token,
-      },
-      body: JSON.stringify({
-        email: email.value.trim(),
-        password: password.value,
-        remember: remember.value,
-      }),
-    })
-
-    if (!response.ok) {
-      const problem = await response.json().catch(() => null)
-      throw new Error(problem ? extractErrorMessage(problem) : 'Login failed.')
-    }
-
-    const data = (await response.json()) as { user: ApiUser }
-    emit('success', data.user)
-    password.value = ''
-  } catch (submitError) {
-    if (submitError instanceof Error) {
-      emit('error', submitError.message)
-      return
-    }
-
-    emit('error', 'Something went wrong.')
-  } finally {
-    loading.value = false
+  if (!formValid.value) {
+    emit('error', 'Please correct the highlighted fields before continuing.')
+    return
   }
+
+  await submit({
+    email: email.value,
+    password: password.value,
+    remember: remember.value,
+  })
 }
 </script>
 
 <template>
-  <form class="form" @submit.prevent="login">
-    <label class="field">
-      <span>Email</span>
-      <input v-model="email" type="email" autocomplete="email" required />
-    </label>
+  <form class="auth-form" @submit.prevent="login">
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="login-email">Email</label>
+      <InputText
+        id="login-email"
+        v-model.trim="email"
+        type="email"
+        autocomplete="email"
+        style="width: 100%"
+        @blur="touchedEmail = true"
+      />
+      <small v-if="emailError" class="p-error">{{ emailError }}</small>
+    </div>
 
-    <label class="field">
-      <span>Password</span>
-      <input v-model="password" type="password" autocomplete="current-password" required />
-    </label>
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="login-password">Password</label>
+      <Password
+        id="login-password"
+        v-model="password"
+        :feedback="false"
+        toggleMask
+        autocomplete="current-password"
+        :input-style="{ width: '100%' }"
+        @blur="touchedPassword = true"
+      />
+      <small v-if="passwordError" class="p-error">{{ passwordError }}</small>
+    </div>
 
-    <label class="remember">
-      <input v-model="remember" type="checkbox" />
-      <span>Remember me</span>
-    </label>
+    <div class="auth-form__remember">
+      <Checkbox inputId="login-remember" v-model="remember" binary />
+      <label for="login-remember">Remember me</label>
+    </div>
 
-    <button class="primary" type="submit" :disabled="loading">
-      {{ loading ? 'Logging in...' : 'Login' }}
-    </button>
+    <Button type="submit" label="Login" icon="pi pi-sign-in" :loading="loading" style="width: 100%" />
   </form>
 </template>
 
 <style scoped>
-.form {
+.auth-form {
   display: grid;
-  gap: 1rem;
+  gap: 1.1rem;
 }
 
-.field {
+.auth-form__field {
   display: grid;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
-.field span {
-  font-size: 0.9rem;
+.auth-form__label {
   font-weight: 600;
+  font-size: 0.9rem;
 }
 
-.field input {
-  border-radius: 8px;
-  border: 1px solid #cdd0d4;
-  padding: 0.7rem 0.9rem;
-  font-size: 1rem;
-}
-
-.field input:focus {
-  outline: 2px solid #4f46e5;
-  outline-offset: 1px;
-}
-
-.remember {
+.auth-form__remember {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
-}
-
-button {
-  height: 2.7rem;
-  border-radius: 8px;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.primary {
-  background: #4f46e5;
-  color: #fff;
 }
 </style>

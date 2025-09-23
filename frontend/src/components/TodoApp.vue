@@ -51,49 +51,60 @@ const handlePriorityChange = (payload: { taskId: number; priority: Priority }) =
 
 <template>
   <div class="todo">
-    <TodoSidebar
-      :lists="lists"
-      :selected-list-id="selectedListId"
-      :new-list-name="newListName"
-      :creating-list="creatingList"
-      :loading-lists="loadingLists"
-      :can-create-list="canCreateList"
-      @update:newListName="updateListName"
-      @create="createList()"
-      @select="selectList"
-    />
+    <Card class="todo__panel">
+      <template #content>
+        <TodoSidebar
+          :lists="lists"
+          :selected-list-id="selectedListId"
+          :new-list-name="newListName"
+          :creating-list="creatingList"
+          :loading-lists="loadingLists"
+          :can-create-list="canCreateList"
+          @update:newListName="updateListName"
+          @create="createList()"
+          @select="selectList"
+        />
+      </template>
+    </Card>
 
-    <TodoTasksPanel
-      :selected-list="selectedList"
-      :sorted-tasks="sortedTasks"
-      :loading-lists="loadingLists"
-      :new-task-title="newTaskTitle"
-      :new-task-priority="newTaskPriority"
-      :adding-task="addingTask"
-      :can-add-task="canAddTask"
-      :deleting-task-id="deletingTaskId"
-      :updating-task-id="updatingTaskId"
-      :priority-labels="priorityLabels"
-      @update:newTaskTitle="updateTaskTitle"
-      @update:newTaskPriority="updateTaskPriority"
-      @add-task="addTask()"
-      @delete-task="deleteTask"
-      @change-priority="handlePriorityChange"
-    />
+    <Card class="todo__panel todo__panel--main">
+      <template #content>
+        <TodoTasksPanel
+          :selected-list="selectedList"
+          :sorted-tasks="sortedTasks"
+          :loading-lists="loadingLists"
+          :new-task-title="newTaskTitle"
+          :new-task-priority="newTaskPriority"
+          :adding-task="addingTask"
+          :can-add-task="canAddTask"
+          :deleting-task-id="deletingTaskId"
+          :updating-task-id="updatingTaskId"
+          :priority-labels="priorityLabels"
+          @update:newTaskTitle="updateTaskTitle"
+          @update:newTaskPriority="updateTaskPriority"
+          @add-task="addTask()"
+          @delete-task="deleteTask"
+          @change-priority="handlePriorityChange"
+        />
+      </template>
+    </Card>
   </div>
 </template>
 
 <style scoped>
 .todo {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) 1fr;
-  gap: 2rem;
-  min-height: 320px;
+  gap: 1.5rem;
 }
 
-@media (max-width: 860px) {
+.todo__panel :deep(.p-card-content) {
+  padding-top: 0.5rem;
+}
+
+@media (min-width: 960px) {
   .todo {
-    grid-template-columns: 1fr;
+    grid-template-columns: 320px 1fr;
+    align-items: start;
   }
 }
 </style>

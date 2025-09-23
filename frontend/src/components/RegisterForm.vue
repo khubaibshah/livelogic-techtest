@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+
+import { useRegisterRequest } from '../composables/useAuthRequests'
 
 type ApiUser = {
   name: string
@@ -15,181 +17,182 @@ const name = ref('')
 const email = ref('')
 const password = ref('')
 const passwordConfirmation = ref('')
-const loading = ref(false)
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+const submitAttempted = ref(false)
+const touchedName = ref(false)
+const touchedEmail = ref(false)
+const touchedPassword = ref(false)
+const touchedConfirmation = ref(false)
 
-const findCookieValue = (key: string): string | null => {
-  const match = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith(key + '='))
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-  return match ? decodeURIComponent(match.split('=')[1]) : null
-}
+const nameValidation = computed(() => (name.value.trim() ? '' : 'Name is required.'))
+const emailValidation = computed(() => {
+  const value = email.value.trim()
 
-const getXsrfToken = (): string | null => findCookieValue('XSRF-TOKEN')
-
-const ensureCsrfCookie = async () => {
-  await fetch(API_BASE_URL + '/sanctum/csrf-cookie', {
-    credentials: 'include',
-  })
-}
-
-const extractErrorMessage = (problem: unknown): string => {
-  if (problem && typeof problem === 'object') {
-    const candidate = problem as { message?: unknown; errors?: Record<string, unknown> }
-
-    if (candidate.errors && typeof candidate.errors === 'object') {
-      const messages = Object.values(candidate.errors).flat()
-      const firstMessage = messages.find((entry): entry is string => typeof entry === 'string')
-
-      if (firstMessage) {
-        return firstMessage
-      }
-    }
-
-    if (typeof candidate.message === 'string') {
-      return candidate.message
-    }
+  if (!value) {
+    return 'Email is required.'
   }
 
-  return 'Something went wrong.'
-}
+  if (!emailPattern.test(value)) {
+    return 'Enter a valid email address.'
+  }
 
-const register = async () => {
-  if (password.value !== passwordConfirmation.value) {
-    emit('error', 'Passwords do not match.')
-    return
+  return ''
+})
+
+const passwordValidation = computed(() => {
+  if (!password.value) {
+    return 'Password is required.'
   }
 
   if (password.value.length < 8) {
-    emit('error', 'Password must be at least 8 characters.')
+    return 'Password must be at least 8 characters.'
+  }
+
+  return ''
+})
+
+const confirmationValidation = computed(() => {
+  if (!passwordConfirmation.value) {
+    return 'Please confirm your password.'
+  }
+
+  if (passwordConfirmation.value !== password.value) {
+    return 'Passwords need to match.'
+  }
+
+  return ''
+})
+
+const showNameError = computed(() => submitAttempted.value || touchedName.value)
+const showEmailError = computed(() => submitAttempted.value || touchedEmail.value)
+const showPasswordError = computed(() => submitAttempted.value || touchedPassword.value)
+const showConfirmationError = computed(() => submitAttempted.value || touchedConfirmation.value)
+
+const nameError = computed(() => (showNameError.value ? nameValidation.value : ''))
+const emailError = computed(() => (showEmailError.value ? emailValidation.value : ''))
+const passwordError = computed(() => (showPasswordError.value ? passwordValidation.value : ''))
+const confirmationError = computed(() => (
+  showConfirmationError.value ? confirmationValidation.value : ''
+))
+
+const formValid = computed(
+  () =>
+    !nameValidation.value &&
+    !emailValidation.value &&
+    !passwordValidation.value &&
+    !confirmationValidation.value
+)
+
+const { loading, submit } = useRegisterRequest({
+  onSuccess: (user) => {
+    emit('success', user)
+    submitAttempted.value = false
+    touchedName.value = false
+    touchedEmail.value = false
+    touchedPassword.value = false
+    touchedConfirmation.value = false
+  },
+  onError: (message) => emit('error', message),
+})
+
+const register = async () => {
+  submitAttempted.value = true
+
+  if (!formValid.value) {
+    emit('error', 'Please correct the highlighted fields before continuing.')
     return
   }
 
-  loading.value = true
-  emit('error', '')
-
-  try {
-    await ensureCsrfCookie()
-
-    const token = getXsrfToken()
-
-    if (!token) {
-      throw new Error('Unable to establish CSRF token.')
-    }
-
-    const response = await fetch(API_BASE_URL + '/register', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'X-XSRF-TOKEN': token,
-      },
-      body: JSON.stringify({
-        name: name.value.trim(),
-        email: email.value.trim(),
-        password: password.value,
-        password_confirmation: passwordConfirmation.value,
-      }),
-    })
-
-    if (!response.ok) {
-      const problem = await response.json().catch(() => null)
-      throw new Error(problem ? extractErrorMessage(problem) : 'Registration failed.')
-    }
-
-    const data = (await response.json()) as { user: ApiUser }
-    emit('success', data.user)
-    name.value = ''
-    email.value = ''
-    password.value = ''
-    passwordConfirmation.value = ''
-  } catch (submitError) {
-    if (submitError instanceof Error) {
-      emit('error', submitError.message)
-      return
-    }
-
-    emit('error', 'Something went wrong.')
-  } finally {
-    loading.value = false
-  }
+  await submit({
+    name: name.value,
+    email: email.value,
+    password: password.value,
+    passwordConfirmation: passwordConfirmation.value,
+  })
 }
 </script>
 
 <template>
-  <form class="form" @submit.prevent="register">
-    <label class="field">
-      <span>Name</span>
-      <input v-model="name" type="text" autocomplete="name" required />
-    </label>
+  <form class="auth-form" @submit.prevent="register">
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="register-name">Name</label>
+      <InputText
+        id="register-name"
+        v-model.trim="name"
+        type="text"
+        autocomplete="name"
+        style="width: 100%"
+        @blur="touchedName = true"
+      />
+      <small v-if="nameError" class="p-error">{{ nameError }}</small>
+    </div>
 
-    <label class="field">
-      <span>Email</span>
-      <input v-model="email" type="email" autocomplete="email" required />
-    </label>
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="register-email">Email</label>
+      <InputText
+        id="register-email"
+        v-model.trim="email"
+        type="email"
+        autocomplete="email"
+        style="width: 100%"
+        @blur="touchedEmail = true"
+      />
+      <small v-if="emailError" class="p-error">{{ emailError }}</small>
+    </div>
 
-    <label class="field">
-      <span>Password</span>
-      <input v-model="password" type="password" autocomplete="new-password" required />
-    </label>
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="register-password">Password</label>
+      <Password
+        id="register-password"
+        v-model="password"
+        toggleMask
+        :feedback="false"
+        autocomplete="new-password"
+        :input-style="{ width: '100%' }"
+        @blur="touchedPassword = true"
+      />
+      <small v-if="passwordError" class="p-error">{{ passwordError }}</small>
+    </div>
 
-    <label class="field">
-      <span>Confirm Password</span>
-      <input v-model="passwordConfirmation" type="password" autocomplete="new-password" required />
-    </label>
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="register-password-confirm">Confirm password</label>
+      <Password
+        id="register-password-confirm"
+        v-model="passwordConfirmation"
+        toggleMask
+        :feedback="false"
+        autocomplete="new-password"
+        :input-style="{ width: '100%' }"
+        @blur="touchedConfirmation = true"
+      />
+      <small v-if="confirmationError" class="p-error">{{ confirmationError }}</small>
+    </div>
 
-    <button class="primary" type="submit" :disabled="loading">
-      {{ loading ? 'Registering...' : 'Register' }}
-    </button>
+    <Button
+      type="submit"
+      label="Create account"
+      icon="pi pi-user-plus"
+      :loading="loading"
+      style="width: 100%"
+    />
   </form>
 </template>
 
 <style scoped>
-.form {
+.auth-form {
   display: grid;
-  gap: 1rem;
+  gap: 1.1rem;
 }
 
-.field {
+.auth-form__field {
   display: grid;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
-.field span {
+.auth-form__label {
+  font-weight: 600;
   font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.field input {
-  border-radius: 8px;
-  border: 1px solid #cdd0d4;
-  padding: 0.7rem 0.9rem;
-  font-size: 1rem;
-}
-
-.field input:focus {
-  outline: 2px solid #4f46e5;
-  outline-offset: 1px;
-}
-
-button {
-  height: 2.7rem;
-  border-radius: 8px;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.primary {
-  background: #4f46e5;
-  color: #fff;
 }
 </style>

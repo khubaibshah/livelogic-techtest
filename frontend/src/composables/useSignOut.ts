@@ -1,11 +1,11 @@
 import { ref } from 'vue'
 
+import { sanctumRequest } from './useSanctumClient'
+
 type UseSignOutOptions = {
   onSuccess?: () => void
   onError?: (message: string) => void
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 export const useSignOut = (options: UseSignOutOptions = {}) => {
   const loading = ref(false)
@@ -18,22 +18,6 @@ export const useSignOut = (options: UseSignOutOptions = {}) => {
     options.onError?.(message)
   }
 
-  const findCookieValue = (key: string): string | null => {
-    const match = document.cookie
-      .split('; ')
-      .find((row) => row.startsWith(key + '='))
-
-    return match ? decodeURIComponent(match.split('=')[1]) : null
-  }
-
-  const getXsrfToken = (): string | null => findCookieValue('XSRF-TOKEN')
-
-  const ensureCsrfCookie = async () => {
-    await fetch(API_BASE_URL + '/sanctum/csrf-cookie', {
-      credentials: 'include',
-    })
-  }
-
   const signOut = async () => {
     if (loading.value) {
       return
@@ -43,26 +27,7 @@ export const useSignOut = (options: UseSignOutOptions = {}) => {
     emitError('')
 
     try {
-      if (!getXsrfToken()) {
-        await ensureCsrfCookie()
-      }
-
-      const token = getXsrfToken()
-
-      const response = await fetch(API_BASE_URL + '/logout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          Accept: 'application/json',
-          'X-XSRF-TOKEN': token ?? '',
-        },
-      })
-
-      if (!response.ok) {
-        const problem = await response.json().catch(() => null)
-        throw new Error((problem as { message?: string } | null)?.message ?? 'Logout failed.')
-      }
-
+      await sanctumRequest('/logout', { method: 'POST' }, { requireCsrf: true })
       emitSuccess()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Something went wrong.'
