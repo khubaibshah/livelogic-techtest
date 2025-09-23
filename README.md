@@ -28,12 +28,9 @@ Make sure the following are installed **before** cloning:
 ## 2. Clone the repository
 
 ```bash
-git clone https://github.com/<your-account>/livelogic-techtest.git
+git clone https://github.com/khubaibshah/livelogic-techtest
 cd livelogic-techtest
 ```
-
-Replace `<your-account>` with the actual GitHub username when you push this repo.
-
 ---
 
 ## 3. Backend setup (Laravel + SQLite)
